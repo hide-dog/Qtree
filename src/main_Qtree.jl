@@ -65,10 +65,6 @@ function main()
     cell_center = zeros(cellnum,2)
     #morton_num = zeros(cellnum,2)
     
-    ite_a = 1
-    ite_b = ones(4)
-    ite_c = ones(16)
-    ite_d = ones(63)
     for i in 1:cellnum
         x1 = nodes_vtk[elements[i,1],1]
         y1 = nodes_vtk[elements[i,1],2]
@@ -114,39 +110,49 @@ function main()
 
     
     # 線形探索用
-    search0 = zeros(Int8,85)
-    search1 = zeros(Int8,4,21)
-    search2 = zeros(Int8,16,5)
-    search3 = zeros(Int8,64)
+    # 両方の探査を行うため，煩雑
+    search0 = zeros(Int64,85)
+    search1 = zeros(Int64,4,22)
+    search2 = zeros(Int64,16,7)
+    search3 = zeros(Int64,64,4)
     for i in 1:85
         search0[i] = i
     end
     for i in 1:4
-        search1[i,1] = i+1
+        search1[i,1] = 1　　　　　　　　　　　　　　　　# ルート空間
+        search1[i,2] = i+1                           # 親空間
         for j in 1:4
-            search1[i,j+1] = 6 + 4*(i-1) + (j-1)
+            search1[i,j+2] = 6 + 4*(i-1) + (j-1)     # 子空間
         end
         for j in 1:16
-            search1[i,j+5] = 22 + 16*(i-1) + (j-1)
+            search1[i,j+6] = 22 + 16*(i-1) + (j-1)   # 孫空間
         end
     end
     for i in 1:16
-        search2[i,1] = i+5
+        search2[i,1] = 1                             # ルート空間
+        search2[i,2] = div(i-1,4) + 2                # 親空間
+        search2[i,3] = i+5                           # 子空間
         for j in 1:4
-            search2[i,j+1] = 22 + 4*(i-1) + (j-1)
+            search2[i,j+3] = 22 + 4*(i-1) + (j-1)    # 孫空間
         end
     end
     for i in 1:64
-        search3[i] = 22 + (i-1)
+        search3[i,1] = 1                             # ルート空間
+        search3[i,2] = div(i-1,16) + 2               # 親空間
+        search3[i,3] = div(i-1,4) + 6                # 子空間
+        search3[i,4] = 22 + (i-1)                    # 孫空間
     end
-    
+    println(search1)
+    println(search2)
+    println(search3)
+
     # 分割したセル中心と近い点を三点計算
     close_point_num = zeros(n_x,n_y,3)
     distance = zeros(n_x,n_y,3)   
     distance[:,:,:] .= 100
     
     # 分割した空間がセルと当たるか否かの判定
-    atari = zeros(Int8,n_x,n_y)
+    atari = zeros(Int64,n_x,n_y)
     
     prog = Progress(n_x,1)
     for i in 1:n_x
@@ -157,13 +163,13 @@ function main()
                 loop = 85
             elseif new_morton_num[i,j,1] ==1      # 所属空間
                 temp = copy(search1)
-                loop = 84
+                loop = 88
             elseif new_morton_num[i,j,1] ==2      # 所属空間
                 temp = copy(search2)
-                loop = 80
+                loop = 112
             elseif new_morton_num[i,j,1] ==3      # 所属空間
                 temp = copy(search3)
-                loop = 64
+                loop = 256
             else 
                 " stop program !!"
                 throw(UndefVarError(:x))
@@ -172,6 +178,7 @@ function main()
             # 空間事に探査
             for k in 1:loop
                 for l in 1:memori
+                    
                     if morton_tree[temp[k],l] == 0
                         break
                     end
@@ -226,6 +233,10 @@ function main()
             end
         end
     end
+
+    println(close_point_num[23,25,:])
+
+
     println(" fin kuukan bunkatu3 \n")
 
     println("\n ---------------------------------- \n")
