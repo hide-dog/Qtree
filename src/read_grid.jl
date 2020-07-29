@@ -98,24 +98,54 @@ function read_elements_vtk(skipnum)
         fff[i]=replace(fff[i]," \r" => "")
     end
 
-    elements = zeros(num_elements,4)
+    elements = zeros(Int64,num_elements,4)
     for i in 1:num_elements
         temp=split(fff[i+skipnum]," ")
-
-        elements[i,1] = parse(Int64,temp[2])-1
-        elements[i,2] = parse(Int64,temp[3])-1
-        elements[i,3] = parse(Int64,temp[4])-1
-        elements[i,4] = parse(Int64,temp[5])-1
+        
+        elements[i,1] = parse(Int64,temp[2])
+        elements[i,2] = parse(Int64,temp[3])
+        elements[i,3] = parse(Int64,temp[4])
+        elements[i,4] = parse(Int64,temp[5])
+        
     end
     return elements
 end 
+
+function read_result(skipnum)
+    fff=[]
+    open("test333.dat", "r") do f
+        fff=read(f,String)
+    end 
+    fff=split(fff,"\n",keepempty=false)
+    num_point=length(fff)-skipnum
+    
+    for i in 1+skipnum:length(fff)
+        fff[i]=replace(fff[i]," \r" => "")
+    end
+
+    readQ = zeros(num_point,5)
+    for i in 1:num_point
+        temp=split(fff[i+skipnum]," ")
+        
+        k = 1
+        for j in 1:length(temp)
+            if temp[j] != ""
+                readQ[i,k] = parse(Float64,temp[j])
+                k += 1
+            end
+        end
+
+    end
+    return readQ
+end
 
 function read_allgrid()
     skip=1
     xmax,ymax = read_nodenum(skip)
     nodes     = read_nodes(skip,xmax,ymax)
-    nodes_vtk = read_nodes_vtk(skipnum)
-    elements  = read_elements_vtk(skipnum)
+    nodes_vtk = read_nodes_vtk(skip)
+    elements  = read_elements_vtk(skip)
+    readQ     = read_result(skip)
     println("fin read grid")
-    return xmax,ymax,nodes,nodes_vtk,elements
+    return xmax,ymax,nodes,nodes_vtk,elements,readQ
 end
