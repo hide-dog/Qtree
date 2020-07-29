@@ -34,7 +34,7 @@ function main()
 
             # =-------------異常値をはじく事-----------
 
-            morton_num[i,j,1],morton_num[i,j,2] = cal_morton(ulx,uly,lrx,lry)
+            new_morton_num[i,j,1],new_morton_num[i,j,2] = cal_morton(ulx,uly,lrx,lry)
 
             new_cell_center[i,j,1] = s_x +dx/2+dx*(i-1)
             new_cell_center[i,j,2] = s_y +dy/2+dy*(j-1)
@@ -43,7 +43,27 @@ function main()
 
     # セルを囲む四角形
     # これでモートン空間番号を算出
-    over_rectangle = zeros(xmax-2,ymax-2,2,2)
+    for i in 1:n_x
+        for j in 1:n_y
+            maxx = max(nodes[i,j,1],nodes[i+1,j,1],nodes[i,j+1,1],nodes[i+1,j+1,1])
+            minx = max(nodes[i,j,1],nodes[i+1,j,1],nodes[i,j+1,1],nodes[i+1,j+1,1])
+            maxy = max(nodes[i,j,2],nodes[i+1,j,2],nodes[i,j+1,2],nodes[i+1,j+1,2])
+            miny = max(nodes[i,j,2],nodes[i+1,j,2],nodes[i,j+1,2],nodes[i+1,j+1,2])
+
+            # 左上の点のモートン空間番号
+            ulx = Int((minx-s_x) / unitx) # 原点に合わせて番号を付けるため（-s_x）
+            uly = Int((maxy-s_y) / unity)
+
+            # 右下の点のモートン空間番号
+            lrx = Int((maxx-s_x) / unitx) # 原点に合わせて番号を付けるため（-s_x）
+            lry = Int((miny-s_y) / unity)
+
+            # =-------------異常値をはじく事-----------
+
+            morton_num[i,j,1],morton_num[i,j,2] = cal_morton(ulx,uly,lrx,lry)
+
+
+
 
 
     
