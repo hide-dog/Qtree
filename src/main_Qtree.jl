@@ -3,26 +3,37 @@ using Printf
 
 function main()
     PARAMDAT = "PARAMDAT.json"
-    xmax,ymax,nodes,nodes_vtk,elements,readQ = read_allgrid()
 
-    # println(readQ[1,:])
+    # 膨張率 [%]
+    expantion = 10
+    
+    # 構造体メモリ
+    memori = 20000
     
 
 
+    # ----------------------------------------------------------
+    # 変数はないはず
+    # ----------------------------------------------------------
+
+    xmax,ymax,nodes,nodes_vtk,elements,readQ = read_allgrid()
+
     out_file,in_file,n_div,s_x,e_x,n_x,s_y,e_y,n_y = input_para(PARAMDAT)
 
-    lx = abs(e_x - s_x)
-    ly = abs(e_y - s_y)
-
-    main_pre(n_x,n_y,lx,ly)
-
+    main_pre(n_x,n_y,s_x,e_x,s_y,e_y)
 
     # 空間分割
     divnum = 2^n_div
 
+    # 辺の長さ
+    lx = abs(e_x - s_x)
+    ly = abs(e_y - s_y)
+    lx_exp = lx *expantion/200
+    ly_exp = ly *expantion/200
+
     # モートン単位長
-    unitx = abs(e_x - s_x) / divnum
-    unity = abs(e_y - s_y) / divnum
+    unitx = abs(e_x - s_x) / divnum *(1 + expantion/100)
+    unity = abs(e_y - s_y) / divnum *(1 + expantion/100)
 
     # 空間分割中心算出
     dx = (e_x - s_x) / n_x
@@ -33,18 +44,16 @@ function main()
     for i in 1:n_x
         for j in 1:n_y
             # 左上の点のモートン空間番号
-            ulx = floor((s_x + dx * (i-1) -s_x) / unitx) # 原点に合わせて番号を付けるため（-s_x）
-            uly = floor((s_y + dy *  j    -s_y) / unity)
+            ulx = floor((s_x + dx * (i-1) -s_x + lx_exp) / unitx) # 原点に合わせて番号を付けるため（-s_x + lx_exp）
+            uly = floor((s_y + dy *  j    -s_y + ly_exp) / unity)
 
             # 右下の点のモートン空間番号
-            lrx = floor((s_x + dx *  i    -s_x) / unitx) # 原点に合わせて番号を付けるため（-s_x）
-            lry = floor((s_y + dy * (j-1) -s_y) / unity)
-
-            # =-------------異常値をはじく事-----------
+            lrx = floor((s_x + dx *  i    -s_x + lx_exp) / unitx) # 原点に合わせて番号を付けるため（-s_x + lx_exp）
+            lry = floor((s_y + dy * (j-1) -s_y + ly_exp) / unity)
 
             # 0<=s, 0<=t
             #new_morton_num[i,j,1],new_morton_num[i,j,2] = cal_morton(ulx,uly,lrx,lry)
-            s,t = cal_morton(ulx,uly,lrx,lry)
+            s,t = cal_morton(ulx,uly,lrx,lry,n_div)
             new_morton_num[i,j,1] = s
             new_morton_num[i,j,2] = t
 
@@ -55,9 +64,12 @@ function main()
     println(" fin kuukan bunkatu\n")
 
     # 登録管理構造体
-    memori = 1000
-    morton_tree = zeros(Int64,85,memori)
-    morton_tree_num = ones(Int64,85)
+    s = Int64(0)
+    for i in 1:(n_div+1)
+        s = s + 4^(i-1)
+    end
+    morton_tree = zeros(Int64,s,memori)
+    morton_tree_num = ones(Int64,s)
 
     # セルを囲む四角形
     # これでモートン空間番号を算出
@@ -83,76 +95,43 @@ function main()
         miny = minimum(temp)
 
         # 左上の点のモートン空間番号
-        ulx = floor((minx-s_x) / unitx) # 原点に合わせて番号を付けるため（-s_x）
-        uly = floor((maxy-s_y) / unity)
+        ulx = floor((minx-s_x + lx_exp) / unitx) # 原点に合わせて番号を付けるため（-s_x + lx_exp）
+        uly = floor((maxy-s_y + ly_exp) / unity)
 
         # 右下の点のモートン空間番号
-        lrx = floor((maxx-s_x) / unitx) # 原点に合わせて番号を付けるため（-s_x）
-        lry = floor((miny-s_y) / unity)
+        lrx = floor((maxx-s_x + lx_exp) / unitx) # 原点に合わせて番号を付けるため（-s_x + lx_exp）
+        lry = floor((miny-s_y + ly_exp) / unity)
 
         # =-------------異常値をはじく事-----------
-        
-        #morton_num[i,1],morton_num[i,2] = cal_morton(ulx,uly,lrx,lry)
-        
-        # 0<=s, 0<=t
-        s,t = cal_morton(ulx,uly,lrx,lry)
+        if (ulx < 0 || uly <0) || (lrx < 0 || lry <0)
+            continue
+        elseif (ulx < 0 || uly <0) || (lrx < 0 || lry <0)
+            continue
+        else
+            #morton_num[i,1],morton_num[i,2] = cal_morton(ulx,uly,lrx,lry)
+            # 0<=s, 0<=t
+            s,t = cal_morton(ulx,uly,lrx,lry,n_div)
 
-        num = Int64(t + (4^s-1)/3   +1)     # 線形空間番号
+            num = Int64(t + (4^s-1)/3   +1)     # 線形空間番号
 
-        s = morton_tree_num[num]
-        morton_tree[num,s] = i
-        morton_tree_num[num] += 1
+            s = morton_tree_num[num]
+            morton_tree[num,s] = i
+            morton_tree_num[num] += 1
+        end
 
         cell_center[i,1] = 0.25*(x1+x2+x3+x4)
         cell_center[i,2] = 0.25*(y1+y2+y3+y4)
     end
     println(" fin kuukan bunkatu2 \n")
-
     
+        
     # 線形探索用
-    # 両方の探査を行うため，煩雑
-    search0 = zeros(Int64,85)
-    search1 = zeros(Int64,4,22)
-    search2 = zeros(Int64,16,7)
-    search3 = zeros(Int64,64,4)
-    for i in 1:85
-        search0[i] = i
-    end
-    for i in 1:4
-        search1[i,1] = 1　　　　　　　　　　　　　　　　# ルート空間
-        search1[i,2] = i+1                           # 親空間
-        for j in 1:4
-            search1[i,j+2] = 6 + 4*(i-1) + (j-1)     # 子空間
-        end
-        for j in 1:16
-            search1[i,j+6] = 22 + 16*(i-1) + (j-1)   # 孫空間
-        end
-    end
-    for i in 1:16
-        search2[i,1] = 1                             # ルート空間
-        search2[i,2] = div(i-1,4) + 2                # 親空間
-        search2[i,3] = i+5                           # 子空間
-        for j in 1:4
-            search2[i,j+3] = 22 + 4*(i-1) + (j-1)    # 孫空間
-        end
-    end
-    for i in 1:64
-        search3[i,1] = 1                             # ルート空間
-        search3[i,2] = div(i-1,16) + 2               # 親空間
-        search3[i,3] = div(i-1,4) + 6                # 子空間
-        search3[i,4] = 22 + (i-1)                    # 孫空間
-    end
-    println(search1)
-    println(search2)
-    println(search3)
+    s,search0,search1,search2,search3,search4 = liner_morton(n_div)
 
     # 分割したセル中心と近い点を三点計算
     close_point_num = zeros(n_x,n_y,3)
     distance = zeros(n_x,n_y,3)   
     distance[:,:,:] .= 100
-    
-    # 分割した空間がセルと当たるか否かの判定
-    atari = zeros(Int64,n_x,n_y)
     
     prog = Progress(n_x,1)
     for i in 1:n_x
@@ -160,16 +139,19 @@ function main()
         for j in 1:n_y
             if new_morton_num[i,j,1] ==0      # 所属空間
                 temp = copy(search0)
-                loop = 85
+                loop = Int(s[1] * 4^0)
             elseif new_morton_num[i,j,1] ==1      # 所属空間
                 temp = copy(search1)
-                loop = 88
+                loop = Int(s[2] * 4^1)
             elseif new_morton_num[i,j,1] ==2      # 所属空間
                 temp = copy(search2)
-                loop = 112
+                loop = Int(s[3] * 4^2)
             elseif new_morton_num[i,j,1] ==3      # 所属空間
                 temp = copy(search3)
-                loop = 256
+                loop = Int(s[4] * 4^3)
+            elseif new_morton_num[i,j,1] ==4      # 所属空間
+                temp = copy(search4)
+                loop = Int(s[5] * 4^4)
             else 
                 " stop program !!"
                 throw(UndefVarError(:x))
@@ -201,41 +183,10 @@ function main()
                             break
                         end
                     end
-
-                    # ---------- 過大評価 ---------------
-                    cnum = morton_tree[temp[k],l]
-
-                    x1 = nodes_vtk[elements[cnum,1],1]
-                    y1 = nodes_vtk[elements[cnum,1],2]
-                    x2 = nodes_vtk[elements[cnum,2],1]
-                    y2 = nodes_vtk[elements[cnum,2],2]
-                    x3 = nodes_vtk[elements[cnum,3],1]
-                    y3 = nodes_vtk[elements[cnum,3],2]
-                    x4 = nodes_vtk[elements[cnum,4],1]
-                    y4 = nodes_vtk[elements[cnum,4],2]
-
-                    temp_x = [x1,x2,x3,x4]
-                    maxx = maximum(temp_x)
-                    minx = minimum(temp_x)
-                    temp_y = [y1,y2,y3,y4]
-                    maxy = maximum(temp_y)
-                    miny = minimum(temp_y)
-
-                    x = new_cell_center[i,j,1]
-                    y = new_cell_center[i,j,2]
-
-                    if minx < x && x < maxx
-                        if miny < y && y < maxy
-                            atari[i,j] += 1
-                        end
-                    end
                 end
             end
         end
     end
-
-    println(close_point_num[23,25,:])
-
 
     println(" fin kuukan bunkatu3 \n")
 
@@ -280,6 +231,48 @@ function main()
             end
         end
     end
+
+    println("\n ---------------------------------- \n")
+    println(" start atari ")
+    println("\n ---------------------------------- \n")
+
+    # 分割した空間がセルと当たるか否かの判定
+    atari = zeros(Int64,n_x,n_y)
+    for i in 1:n_x
+        for j in 1:n_y
+            for k in 1:3
+                # ---------- 過大評価 ---------------
+                cnum = Int64(close_point_num[i,j,k])
+
+                x1 = nodes_vtk[elements[cnum,1],1]
+                y1 = nodes_vtk[elements[cnum,1],2]
+                x2 = nodes_vtk[elements[cnum,2],1]
+                y2 = nodes_vtk[elements[cnum,2],2]
+                x3 = nodes_vtk[elements[cnum,3],1]
+                y3 = nodes_vtk[elements[cnum,3],2]
+                x4 = nodes_vtk[elements[cnum,4],1]
+                y4 = nodes_vtk[elements[cnum,4],2]
+
+                temp_x = [x1,x2,x3,x4]
+                maxx = maximum(temp_x)
+                minx = minimum(temp_x)
+                temp_y = [y1,y2,y3,y4]
+                maxy = maximum(temp_y)
+                miny = minimum(temp_y)
+
+                x = new_cell_center[i,j,1]
+                y = new_cell_center[i,j,2]
+
+                if minx < x && x < maxx
+                    if miny < y && y < maxy
+                        atari[i,j] += 1
+                    end
+                end
+            end
+        end
+    end
+
+    # output
 
     fff = "grid_morton/atari"
     open(fff,"w") do f

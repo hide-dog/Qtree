@@ -1,11 +1,11 @@
 using Printf
 
-function main_pre(n_x,n_y,lx,ly)
+function main_pre(n_x,n_y,s_x,e_x,s_y,e_y)
     xy_or_r = 1          # 1:x,y 2:r,t
     xnum = n_x           #       2:rnum
     ynum = n_y           #       2:tnum
-    lenx = lx           #       2:inr
-    leny = ly           #       2:outr
+    lenx = abs(e_x-s_x)           #       2:inr
+    leny = abs(e_y-s_y)           #       2:outr
     st_ang  = -1/2*pi       # 2:angle
     en_ang  = -3/2*pi          # 2:angle
 
@@ -15,10 +15,10 @@ function main_pre(n_x,n_y,lx,ly)
     make_dir(result)
     result = "post_result_morton"
     make_dir(result)
-    nodes, xnum_max, ynum_max = mk_gird(xnum,ynum,lenx,leny,xy_or_r,st_ang,en_ang,outdir)
+    nodes, xnum_max, ynum_max = mk_gird(xnum,ynum,lenx,leny,xy_or_r,s_x,s_y,st_ang,en_ang,outdir)
 end
 
-function mk_gird(xnum,ynum,lenx,leny,xy_or_r,st_ang,en_ang,outdir)
+function mk_gird(xnum,ynum,lenx,leny,xy_or_r,s_x,s_y,st_ang,en_ang,outdir)
     """
     nodes[i,j,k]
     i   : x,r方向の番号
@@ -37,8 +37,8 @@ function mk_gird(xnum,ynum,lenx,leny,xy_or_r,st_ang,en_ang,outdir)
     if xy_or_r == 1
         for i in 2:xnum_max-1
             for j in 2:ynum_max-1
-                x = lenx/(xnum)*(i-2)
-                y = leny/(ynum)*(j-2)
+                x = lenx/(xnum)*(i-2) + s_x
+                y = leny/(ynum)*(j-2) + s_y
                 nodes[i,j,1] = x
                 nodes[i,j,2] = y
             end 
